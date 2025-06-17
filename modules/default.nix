@@ -1,12 +1,10 @@
 # NOTE: When adding another module argument here, do not forget to provide
 #       defaults in ../default.nix, so that it will cope well with
 #       "nix-env -q".
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   cfg = config.shabitica;
-
-  pkgs = cfg.pinnedPkgs {};
 
   mongodb = pkgs.callPackage ../pkgs/mongodb {};
 
@@ -21,7 +19,7 @@ let
   latestDbVersion = lib.length migrations;
 
 in {
-  imports = [ ./imageproxy.nix ];
+  imports = [ (args: import ./imageproxy.nix (args // {inherit pkgs; })) ];
 
   options.shabitica = {
     hostName = lib.mkOption {
@@ -30,14 +28,6 @@ in {
       example = "shabitica.example.org";
       description = "The host name to use for Shabitica.";
     };
-
-
-    pinnedPkgs = lib.mkOption {
-      # TODO i don't know the type of pkgs, 
-      type = lib.types.anything;
-      description = "Version of nixpkgs used by the Shabitica modules";
-    };
-
 
     adminMailAddress = lib.mkOption {
       type = lib.types.str;
@@ -471,7 +461,7 @@ in {
           hasEtagPatch = let
             patches = config.services.nginx.package.patches or [];
             matchEtagPatch = builtins.match ".*nix-etag.*patch";
-          in lib.any (p: matchEtagPatch p.name != null) patches;
+          in lib.any (p: matchEtagPatch (toString p) != null) patches;
 
           # Workaround for https://github.com/NixOS/nixpkgs/issues/25485
           storeDirWorkaround = ''
